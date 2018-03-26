@@ -1,43 +1,27 @@
 package com.demo.locationupdatedemo;
 
-import android.Manifest;
 import android.content.Intent;
-import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.TextView;
-import com.google.android.gms.common.api.ResolvableApiException;
-import com.google.android.gms.location.*;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.Task;
+import location.LocationFetcher;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationResult;
 
 import java.text.DateFormat;
 import java.util.Date;
 import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
-
-    // request code mappings
-    private static final int LOCATION_PERMISSION_REQUEST = 0;
-    private static final int LOCATION_SETTING_REQUEST = 1;
-
     private View mLayout;
 
-    // Location settings
-    private LocationRequest mLocationRequest;
-    private LocationSettingsRequest.Builder location_setting_request;
-    private SettingsClient settings_client;
-
-    // Location provider and callback handler
-    private FusedLocationProviderClient mFusedLocationClient;
-    private LocationCallback mLocationCallback;
+    // Location related
+    private LocationFetcher mLocationFetcher;
 
     // TextView widgets
     private TextView mLastUpdateTimeTextView;
@@ -71,20 +55,7 @@ public class MainActivity extends AppCompatActivity {
         mLongitudeLabel = "Longitude";
         mLastUpdateTimeLabel = "Last update";
 
-        // Initialize LocationRequest object
-        mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(30000);
-        mLocationRequest.setFastestInterval(5000);
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-
-        // Initialize settings request
-        location_setting_request = new LocationSettingsRequest.Builder()
-                .addLocationRequest(mLocationRequest);
-        settings_client = LocationServices.getSettingsClient(this);
-
-        // Setup FusedLocationClient and define locationCallback
-        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-        mLocationCallback = new LocationCallback() {
+        LocationCallback locationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult locationResult) {
                 if (locationResult == null) {
@@ -104,94 +75,32 @@ public class MainActivity extends AppCompatActivity {
                         mLastUpdateTimeLabel, mLastUpdateTime));
                 }
         };
-
-        get_location_update();
+        mLocationFetcher = LocationFetcher.getInstance(this, locationCallback);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        get_location_update();
+        mLocationFetcher.get_location_update(this);
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode,
                                            @NonNull String permissions[], @NonNull int[] grantResults) {
         switch (requestCode) {
-            case LOCATION_PERMISSION_REQUEST:
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    get_location_update();
-                } else {
-                    request_location_permission();
-                }
-        }
-    }
-
-    private void request_location_permission() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_DENIED) {
-            // Permission is not granted
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
-                Snackbar.make(mLayout, "Need permission to get location info",
-                        Snackbar.LENGTH_INDEFINITE)
-                        .setAction("Ok", new View.OnClickListener() {
-                            @Override
-                            public void onClick(View view) {
-                                ActivityCompat.requestPermissions(MainActivity.this,
-                                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                                        LOCATION_PERMISSION_REQUEST);
-                            }
-                        }).show();
-            } else {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                        LOCATION_SETTING_REQUEST);
-            }
+            case LocationFetcher.LOCATION_PERMISSION_REQUEST:
+                mLocationFetcher.get_location_update(this);
         }
     }
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         switch (requestCode) {
-            case LOCATION_SETTING_REQUEST:
+            case LocationFetcher.LOCATION_SETTING_REQUEST:
                 if (resultCode == RESULT_OK) {
                     mDebugTextView.setText("High Accuracy GPS mode ON");
-                    get_location_update();
+                    mLocationFetcher.get_location_update(this);
                 }
         }
-    }
-
-    private void check_location_settings() {
-        Task<LocationSettingsResponse> task = settings_client.checkLocationSettings(location_setting_request.build());
-
-        task.addOnFailureListener(this, new OnFailureListener() {
-            @Override
-            public void onFailure(@NonNull Exception e) {
-                if (e instanceof ResolvableApiException) {
-                    try {
-                        mDebugTextView.setText("Unmatched location settings detected");
-                        ResolvableApiException resolvable = (ResolvableApiException) e;
-                        resolvable.startResolutionForResult(MainActivity.this,
-                                LOCATION_SETTING_REQUEST);
-                    }
-                    catch (IntentSender.SendIntentException sendEx) {
-                        mDebugTextView.setText("Can't resolve exception in check location setting task");
-                    }
-                }
-            }
-        });
-    }
-
-    private void get_location_update() {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED) {
-                check_location_settings();
-                mFusedLocationClient.requestLocationUpdates(mLocationRequest,
-                        mLocationCallback, null);
-            }
-            else {
-                request_location_permission();
-            }
     }
 }
