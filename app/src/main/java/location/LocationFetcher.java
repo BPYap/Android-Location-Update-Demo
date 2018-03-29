@@ -1,3 +1,7 @@
+// How to use this API:
+// Create a LocationCallback object
+// Get instance of LocationFetcher by mLocationFetcher = LocationFetcher.getInstance(MainActivity, locationCallback)
+// Get location update by calling mLocationFetcher.get_location_update(MainActivity)
 package location;
 
 import android.Manifest;
@@ -6,8 +10,8 @@ import android.content.pm.PackageManager;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import com.demo.locationupdatedemo.MainActivity;
 import com.google.android.gms.common.api.ResolvableApiException;
 import com.google.android.gms.location.*;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -32,7 +36,7 @@ public final class LocationFetcher {
 
     private LocationFetcher(){}
 
-    private LocationFetcher(MainActivity mainActivity, LocationCallback locationCallback) {
+    private LocationFetcher(AppCompatActivity mainActivity, LocationCallback locationCallback) {
         // Initialize LocationRequest object
         mLocationRequest = new LocationRequest();
         mLocationRequest.setInterval(30000);
@@ -50,7 +54,7 @@ public final class LocationFetcher {
         mLocationCallback = locationCallback;
     }
 
-    public static LocationFetcher getInstance(MainActivity mainActivity, LocationCallback locationCallback)
+    public static LocationFetcher getInstance(AppCompatActivity mainActivity, LocationCallback locationCallback)
     {
         if (single_instance == null)
             single_instance = new LocationFetcher(mainActivity, locationCallback);
@@ -58,13 +62,13 @@ public final class LocationFetcher {
         return single_instance;
     }
 
-    private void get_location_permission(MainActivity mainActivity) {
+    private void get_location_permission(AppCompatActivity mainActivity) {
         ActivityCompat.requestPermissions(mainActivity,
                 new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
                 LOCATION_PERMISSION_REQUEST);
     }
 
-    private void check_location_settings(final MainActivity mainActivity) {
+    private void check_location_settings(final AppCompatActivity mainActivity) {
         Task<LocationSettingsResponse> task = settings_client.checkLocationSettings(location_setting_request.build());
 
         task.addOnSuccessListener(mainActivity, new OnSuccessListener<LocationSettingsResponse>() {
@@ -96,7 +100,7 @@ public final class LocationFetcher {
         });
     }
 
-    public void get_location_update(MainActivity mainActivity) {
+    public void get_location_update(AppCompatActivity mainActivity) {
         if (ContextCompat.checkSelfPermission(mainActivity, Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_DENIED) {
             Log.i("LocationFetcher", "No location permission");
